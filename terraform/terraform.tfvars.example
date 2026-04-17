@@ -19,3 +19,7 @@ enable_bedrock = false
 
 # Enable Lambda function resources (minimal cost, default: true)
 enable_lambda = true
+
+# TrustFix AWS account ID — leave empty for initial deployment
+# Update with TrustFix AWS account ID when connecting
+trustfix_aws_account_id = ""

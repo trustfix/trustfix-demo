@@ -87,6 +87,11 @@ output "missing_aud_role_arn" {
   value       = aws_iam_role.missing_aud_condition.arn
 }
 
+output "broad_repo_pattern_role_arn" {
+  description = "Role with broad org-wide repo pattern wildcard"
+  value       = aws_iam_role.broad_repo_pattern.arn
+}
+
 output "service_account_admin_role_arn" {
   description = "EC2 service role with admin access"
   value       = aws_iam_role.service_account_admin.arn

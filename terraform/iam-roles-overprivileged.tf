@@ -40,7 +40,7 @@ resource "aws_iam_role" "service_account_admin" {
 }
 
 resource "aws_iam_role_policy_attachment" "service_account_admin_policy" {
-  role       = aws_iam_role.service_account_admin.name
+  role = aws_iam_role.service_account_admin.name
   # VULNERABILITY: EC2 instances should never have admin access
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
@@ -73,7 +73,7 @@ resource "aws_iam_user" "unused_admin_key" {
 }
 
 resource "aws_iam_user_policy_attachment" "unused_admin_key_policy" {
-  user       = aws_iam_user.unused_admin_key.name
+  user = aws_iam_user.unused_admin_key.name
   # VULNERABILITY: User has admin access
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
@@ -99,8 +99,8 @@ resource "aws_iam_role" "cross_account_admin" {
       {
         Effect = "Allow"
         Principal = {
-          # VULNERABILITY: Trusts a specific account with no external ID
-          AWS = "arn:aws:iam::123456789012:root"
+          # VULNERABILITY: Trusts account with no external ID condition
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
         }
         Action = "sts:AssumeRole"
         # Missing: Condition with external ID for security
@@ -113,7 +113,7 @@ resource "aws_iam_role" "cross_account_admin" {
     Intentional     = "true"
     TrustFixDemo    = "true"
     Severity        = "Critical"
-    ExpectedFinding = "Cross-account role trust without external ID, with admin access"
+    ExpectedFinding = "Admin role trusted without external ID condition"
   }
 }
 

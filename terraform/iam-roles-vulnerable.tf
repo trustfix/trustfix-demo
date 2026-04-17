@@ -27,9 +27,11 @@ resource "aws_iam_role" "missing_sub_condition" {
         }
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
+          StringLike = {
+            # VULNERABILITY: Wildcard sub allows ANY GitHub org/repo
+            "token.actions.githubusercontent.com:sub" = "repo:*"
+          }
           StringEquals = {
-            # VULNERABILITY: No 'sub' condition!
-            # Missing: "token.actions.githubusercontent.com:sub" = "repo:org/repo:*"
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
         }
@@ -42,7 +44,7 @@ resource "aws_iam_role" "missing_sub_condition" {
     Intentional     = "true"
     TrustFixDemo    = "true"
     Severity        = "Critical"
-    ExpectedFinding = "Trust policy allows any GitHub repo to assume this role"
+    ExpectedFinding = "Trust policy sub wildcard allows any GitHub org and repo"
   }
 }
 
@@ -93,7 +95,7 @@ resource "aws_iam_role" "overprivileged_admin" {
 }
 
 resource "aws_iam_role_policy_attachment" "overprivileged_admin_policy" {
-  role       = aws_iam_role.overprivileged_admin.name
+  role = aws_iam_role.overprivileged_admin.name
   # VULNERABILITY: AdministratorAccess is far more than any workflow needs
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
@@ -137,7 +139,7 @@ resource "aws_iam_role" "wildcard_environment" {
     Intentional     = "true"
     TrustFixDemo    = "true"
     Severity        = "High"
-    ExpectedFinding = "Trust policy uses environment:* wildcard"
+    ExpectedFinding = "Trust policy uses environment wildcard"
   }
 }
 
@@ -249,7 +251,7 @@ resource "aws_iam_role" "missing_aud_condition" {
     Intentional     = "true"
     TrustFixDemo    = "true"
     Severity        = "Medium"
-    ExpectedFinding = "Trust policy missing audience (aud) condition"
+    ExpectedFinding = "Trust policy missing audience aud condition"
   }
 }
 
@@ -297,7 +299,7 @@ resource "aws_iam_role" "expired_oidc" {
     TrustFixDemo    = "true"
     Severity        = "Medium"
     ExpectedFinding = "OIDC provider thumbprint may be stale or expired"
-    ThumbprintNote  = "In real scenarios, TrustFix detects providers with outdated thumbprints"
+    ThumbprintNote  = "TrustFix detects providers with outdated thumbprints"
   }
 }
 
@@ -307,7 +309,56 @@ resource "aws_iam_role_policy_attachment" "expired_oidc_policy" {
 }
 
 # -----------------------------------------------------------------------------
-# Role 7: TrustFixDemo-Correct (CONTROL CASE)
+# Role 7: TrustFixDemo-BroadRepoPattern
+# INTENTIONAL VULNERABILITY: OIDC_BROAD_REPO_PATTERN
+# -----------------------------------------------------------------------------
+# This role's trust policy uses repo:${var.github_org}/*:* wildcard,
+# meaning ANY repository in the GitHub organization can assume this role.
+# An attacker who gains access to any repo in the org can assume this role.
+# TrustFix should detect this and recommend scoping to specific repositories.
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_role" "broad_repo_pattern" {
+  name = "TrustFixDemo-BroadRepoPattern"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = aws_iam_openid_connect_provider.github_actions.arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          }
+          StringLike = {
+            # VULNERABILITY: Wildcard allows ANY repo in the org
+            "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/*:*"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Vulnerability   = "OIDC_BROAD_REPO_PATTERN"
+    Intentional     = "true"
+    TrustFixDemo    = "true"
+    Severity        = "High"
+    ExpectedFinding = "Trust policy allows any repository in the organization"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "broad_repo_pattern_policy" {
+  role       = aws_iam_role.broad_repo_pattern.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+}
+
+# -----------------------------------------------------------------------------
+# Role 8: TrustFixDemo-Correct (CONTROL CASE)
 # This role is CORRECTLY CONFIGURED - TrustFix should NOT flag it
 # -----------------------------------------------------------------------------
 # Demonstrates secure OIDC configuration with:

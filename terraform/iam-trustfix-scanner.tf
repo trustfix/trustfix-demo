@@ -26,9 +26,8 @@ resource "aws_iam_role" "trustfix_scanner" {
         Effect = "Allow"
         Principal = {
           # TrustFix production AWS account ID
-          # NOTE: Replace with actual TrustFix AWS account ID
-          # when connecting. For demo purposes, use a placeholder.
-          AWS = "arn:aws:iam::TRUSTFIX_AWS_ACCOUNT_ID:root"
+          # Uses current account as placeholder if not set; update when connecting to TrustFix
+          AWS = "arn:aws:iam::${var.trustfix_aws_account_id != "" ? var.trustfix_aws_account_id : data.aws_caller_identity.current.account_id}:root"
         }
         Action = "sts:AssumeRole"
         Condition = {

@@ -35,3 +35,14 @@ variable "enable_lambda" {
   type        = bool
   default     = true
 }
+
+variable "trustfix_aws_account_id" {
+  description = "TrustFix platform AWS account ID for scanner role trust. Update with real TrustFix account ID when connecting."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.trustfix_aws_account_id == "" || can(regex("^[0-9]{12}$", var.trustfix_aws_account_id))
+    error_message = "Must be empty or a valid 12-digit AWS account ID."
+  }
+}

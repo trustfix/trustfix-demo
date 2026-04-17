@@ -37,8 +37,8 @@ resource "aws_iam_role" "lambda_admin_role" {
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_admin_policy" {
-  count      = var.enable_lambda ? 1 : 0
-  role       = aws_iam_role.lambda_admin_role[0].name
+  count = var.enable_lambda ? 1 : 0
+  role  = aws_iam_role.lambda_admin_role[0].name
   # VULNERABILITY: Lambda should never have admin access
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
@@ -109,10 +109,10 @@ resource "aws_lambda_function" "unencrypted_env" {
   environment {
     variables = {
       # VULNERABILITY: Sensitive-looking env vars without KMS encryption
-      API_KEY         = "demo-api-key-12345"
-      DATABASE_URL    = "postgresql://demo:demo@localhost:5432/demo"
-      SECRET_TOKEN    = "demo-secret-token-intentionally-vulnerable"
-      NORMAL_VAR      = "this-is-fine"
+      API_KEY      = "demo-api-key-12345"
+      DATABASE_URL = "postgresql://demo:demo@localhost:5432/demo"
+      SECRET_TOKEN = "demo-secret-token-intentionally-vulnerable"
+      NORMAL_VAR   = "this-is-fine"
     }
   }
 
@@ -154,8 +154,8 @@ resource "aws_lambda_function" "public_url" {
 }
 
 resource "aws_lambda_function_url" "public_url" {
-  count              = var.enable_lambda ? 1 : 0
-  function_name      = aws_lambda_function.public_url[0].function_name
+  count         = var.enable_lambda ? 1 : 0
+  function_name = aws_lambda_function.public_url[0].function_name
   # VULNERABILITY: No authentication required
   authorization_type = "NONE"
 
