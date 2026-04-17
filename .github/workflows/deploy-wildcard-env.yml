@@ -1,0 +1,55 @@
+# =============================================================================
+# INTENTIONALLY VULNERABLE - DO NOT USE IN PRODUCTION
+# =============================================================================
+# VULNERABILITY: OIDC_WILDCARD_ENVIRONMENT
+#
+# This workflow uses an IAM role whose trust policy has "environment:*" in the
+# sub condition. This allows ANY GitHub environment to assume the role, defeating
+# the purpose of environment-based access controls.
+#
+# TrustFix should detect:
+# - Trust policy uses wildcard in environment claim
+# - Any environment (dev, staging, production, or custom) can assume role
+# - Recommended fix: Specify exact environment names (e.g., "environment:production")
+# =============================================================================
+
+name: Deploy (Vulnerable - Wildcard Environment)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy with Wildcard Environment Role
+    runs-on: ubuntu-latest
+    environment: production  # But the role accepts ANY environment due to wildcard
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (WILDCARD ENVIRONMENT ROLE)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_WILDCARD_ENV }}
+          aws-region: us-east-1
+          # The trust policy uses "environment:*" — any environment works.
+          # An attacker could create a "test" environment and assume this role.
+
+      - name: Verify AWS Identity
+        run: |
+          echo "Assumed role via 'production' environment"
+          echo "But role also accepts 'dev', 'test', or any custom environment!"
+          aws sts get-caller-identity
+
+      - name: Demonstrate Access
+        run: |
+          echo "Listing S3 buckets"
+          aws s3 ls --region us-east-1 || echo "S3 access check complete"

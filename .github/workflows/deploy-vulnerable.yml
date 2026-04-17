@@ -1,0 +1,55 @@
+# =============================================================================
+# INTENTIONALLY VULNERABLE - DO NOT USE IN PRODUCTION
+# =============================================================================
+# VULNERABILITY: OIDC_MISSING_SUB_CONDITION
+#
+# This workflow demonstrates a critical OIDC misconfiguration. The AWS IAM role
+# referenced here (TrustFixDemo-MissingSubCondition) has NO 'sub' condition in
+# its trust policy. This means ANY GitHub repository could use this workflow
+# pattern to assume the role — a severe privilege escalation risk.
+#
+# TrustFix should detect:
+# - The IAM role's trust policy lacks the 'sub' claim condition
+# - Any GitHub Actions workflow can assume this role
+# - Recommended fix: Add 'sub' condition matching specific repo/branch
+# =============================================================================
+
+name: Deploy (Vulnerable - Missing Sub Condition)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy with Vulnerable Role
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (VULNERABLE ROLE)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_VULNERABLE }}
+          aws-region: us-east-1
+          # The vulnerability is NOT in this workflow — it's in the IAM role's
+          # trust policy which lacks a 'sub' condition. TrustFix detects this
+          # in the Terraform and correlates it to this workflow.
+
+      - name: Verify AWS Identity
+        run: |
+          echo "Successfully assumed role (this proves the vulnerability)"
+          aws sts get-caller-identity
+
+      - name: Demonstrate Access
+        run: |
+          echo "Listing S3 buckets (role has S3 read access)"
+          aws s3 ls --region us-east-1 || echo "S3 access check complete"

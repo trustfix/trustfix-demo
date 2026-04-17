@@ -1,0 +1,21 @@
+# =============================================================================
+# TrustFix Demo Environment - Example Variables
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in your values:
+#   cp terraform.tfvars.example terraform.tfvars
+# =============================================================================
+
+# Your GitHub organization or username (REQUIRED)
+github_org = "your-github-org"
+
+# Repository name (default: trustfix-demo)
+github_repo = "trustfix-demo"
+
+# AWS region for deployment (default: us-east-1)
+aws_region = "us-east-1"
+
+# Enable Bedrock agent resources (costs money, default: false)
+enable_bedrock = false
+
+# Enable Lambda function resources (minimal cost, default: true)
+enable_lambda = true

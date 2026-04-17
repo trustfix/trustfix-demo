@@ -1,0 +1,58 @@
+# =============================================================================
+# INTENTIONALLY VULNERABLE - DO NOT USE IN PRODUCTION
+# =============================================================================
+# VULNERABILITY: OVERPRIVILEGED_ROLE
+#
+# This workflow assumes an IAM role with AdministratorAccess policy attached.
+# While the OIDC trust policy may be properly scoped, the role itself has
+# excessive permissions far beyond what any CI/CD workflow needs.
+#
+# TrustFix should detect:
+# - IAM role has AdministratorAccess managed policy attached
+# - Role can perform any AWS action including IAM modifications
+# - Recommended fix: Replace with least-privilege policy scoped to actual needs
+# =============================================================================
+
+name: Deploy (Vulnerable - Overprivileged Admin Role)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy with Admin Role
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OVERPRIVILEGED ROLE)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_OVERPRIVILEGED }}
+          aws-region: us-east-1
+          # This role has AdministratorAccess — far more than any workflow needs.
+          # If this workflow is compromised, attackers have full AWS access.
+
+      - name: Verify AWS Identity
+        run: |
+          echo "Successfully assumed ADMIN role (this is dangerous)"
+          aws sts get-caller-identity
+
+      - name: Demonstrate Excessive Access
+        run: |
+          echo "This role can do ANYTHING in AWS — demonstrating a few:"
+          echo "- List IAM users:"
+          aws iam list-users --max-items 5 || echo "IAM access check"
+          echo "- List EC2 instances:"
+          aws ec2 describe-instances --max-items 5 --region us-east-1 || echo "EC2 access check"
+          echo "- List Lambda functions:"
+          aws lambda list-functions --max-items 5 --region us-east-1 || echo "Lambda access check"

@@ -1,0 +1,62 @@
+# =============================================================================
+# CORRECTLY CONFIGURED - CONTROL/BASELINE
+# =============================================================================
+# This workflow demonstrates SECURE OIDC configuration. TrustFix should NOT
+# flag this workflow (or should mark it as VERIFIED).
+#
+# Security measures implemented:
+# 1. Pinned action versions using commit SHAs (prevents supply chain attacks)
+# 2. IAM role trust policy has specific 'sub' condition (repo:org/repo:ref:refs/heads/main)
+# 3. IAM role trust policy has 'aud' condition (sts.amazonaws.com)
+# 4. Minimal permissions — only what's needed for deployment
+# 5. Only triggers on push to main (not PRs from forks)
+# 6. Uses GitHub environment with protection rules
+# =============================================================================
+
+name: Deploy (Secure - Control Baseline)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Secure Deployment
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      # Pinned to specific commit SHA — prevents supply chain attacks
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      # Pinned to specific commit SHA
+      - name: Configure AWS Credentials (SECURE ROLE)
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_SECURE }}
+          aws-region: us-east-1
+          audience: sts.amazonaws.com
+          # This role's trust policy:
+          # - Has 'sub' condition: repo:${org}/${repo}:ref:refs/heads/main
+          # - Has 'aud' condition: sts.amazonaws.com
+          # - Only allows this specific repo and branch
+
+      - name: Verify AWS Identity
+        run: |
+          echo "Successfully assumed SECURE role"
+          echo "This role has minimal permissions and proper trust conditions"
+          aws sts get-caller-identity
+
+      - name: Deploy Application
+        run: |
+          echo "Deploying to production..."
+          # Role only has permission to read from specific S3 bucket
+          aws s3 ls s3://trustfix-demo-data --region us-east-1 || echo "S3 read check"
+          echo "Deployment complete"

@@ -1,0 +1,61 @@
+# =============================================================================
+# INTENTIONALLY VULNERABLE - DO NOT USE IN PRODUCTION
+# =============================================================================
+# VULNERABILITY: OIDC_FORK_PR_RISK
+#
+# This workflow triggers on pull_request events AND assumes an AWS role with
+# write permissions. By default, pull_request events include PRs from forks.
+# An attacker could fork this repo, modify the workflow, and their PR would
+# trigger execution with AWS access.
+#
+# TrustFix should detect:
+# - Workflow triggers on pull_request (includes forks by default)
+# - Workflow assumes IAM role with write permissions
+# - Recommended fix: Use pull_request_target with careful input validation,
+#   or restrict the trust policy to only allow push events from main branch
+# =============================================================================
+
+name: Deploy (Vulnerable - Fork PR Risk)
+
+on:
+  pull_request:
+    branches:
+      - main
+    # WARNING: This triggers on PRs from forks!
+    # Forked PRs can modify workflow code and exfiltrate secrets/credentials.
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy-preview:
+    name: Deploy Preview (DANGEROUS ON FORK PRs)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (FORK PR RISK)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_FORK_PR }}
+          aws-region: us-east-1
+          # This role has S3 write access. A malicious fork PR could:
+          # 1. Modify this workflow to exfiltrate credentials
+          # 2. Upload malicious content to the S3 bucket
+          # 3. Access other resources the role has permission to
+
+      - name: Verify AWS Identity
+        run: |
+          echo "Running on PR #${{ github.event.pull_request.number }}"
+          echo "PR from fork: ${{ github.event.pull_request.head.repo.fork }}"
+          aws sts get-caller-identity
+
+      - name: Deploy Preview (with write access!)
+        run: |
+          echo "Deploying preview to S3..."
+          echo "This workflow has S3 WRITE access — dangerous for fork PRs!"
+          # aws s3 cp ./dist s3://trustfix-demo-bucket/previews/${{ github.event.pull_request.number }}/ --recursive
